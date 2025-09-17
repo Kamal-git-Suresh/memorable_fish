@@ -56,8 +56,11 @@ void Analyzer::computeFFT()
 
 std::vector<float> Analyzer::getBandLevels()
 {
-    std::vector<float> magnitudes(bands.size(), 0.0f);
+    std::vector<float> magnitudes;
+    magnitudes.reserve(bands.size());
+
     float freqPerBin = static_cast<float>(sampleRate) / static_cast<float>(N);
+    
     for (auto& band: bands)
     {
         band.level = 0; 
