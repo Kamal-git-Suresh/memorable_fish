@@ -1,5 +1,6 @@
 #pragma once
-
+#include <pulse/simple.h>
+#include <pulse/error.h>
 #include <portaudio.h>
 #include <functional>
 
@@ -9,21 +10,16 @@ class AudioCapture
 public:
     using Callback = std::function<void(const float *samples, unsigned long count)>;
 
-    AudioCapture(int deviceIndex, int sampleRate, int framesPerBuffer);
+    AudioCapture(const char* device, int sampleRate, int channels, size_t BUF_SAMPLES);
     ~AudioCapture();
 
-    bool start(Callback callback);
-    void stop();
+    bool getAudioBuffer(std::vector<int16_t>& outBuffer);
 
 private:
-    PaStream *stream = nullptr;
-    Callback userCallback;
-    int sampleRate;
-    int framesPerBuffer;
-    static int paCallback(const void* input, void* output,
-                          unsigned long frameCount,
-                          const PaStreamCallbackTimeInfo* timeInfo,
-                          PaStreamCallbackFlags statusFlags,
-                          void* userData);
+    pa_sample_spec ss;
+    const char * device;
+    int error;
+    pa_simple *stream = nullptr;
+    const size_t BUF_SAMPLES;
 };
 

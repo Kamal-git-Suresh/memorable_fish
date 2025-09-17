@@ -25,7 +25,6 @@ Analyzer::~Analyzer()
 
 void Analyzer::process(const float* samples, size_t count) 
 {
-
     inputBuffer.insert(inputBuffer.end(), samples, samples + count);
     //std::cout<<"Input buffer size: "<<inputBuffer.size()<<std::endl;
     //std::cout<<"Input Buffer contents:" << inputBuffer[0]<<" "<<inputBuffer[1]<<" "<<inputBuffer[2]<<" "<<inputBuffer[3]<<" "<<inputBuffer[4]<<std::endl;
@@ -44,16 +43,17 @@ void Analyzer::computeFFT()
     {
         in[i] = inputBuffer[i];
     }
-    std::cout<<"Input to FFT: "<<in[0]<<" "<<in[1]<<" "<<in[2]<<" "<<in[3]<<" "<<in[4]<<std::endl;
+    //std::cout<<"Input to FFT: "<<in[0]<<" "<<in[1]<<" "<<in[2]<<" "<<in[3]<<" "<<in[4]<<std::endl;
     fftw_execute(plan);
     for (int k = 0; k < N/2; k++) 
     {
         //std::cout <<"out: "<< out[k][0]<<std::endl;
-        std::cout <<"out: "<< out[k][0] <<" " <<out[k][1] << std::endl;
+        //std::cout <<"out: "<< out[k][0] <<" " <<out[k][1] << std::endl;
         float mag = sqrt(out[k][0]*out[k][0] + out[k][1]*out[k][1]);    
         spectrum[k] = mag;
     }
 }
+
 std::vector<float> Analyzer::getBandLevels()
 {
     std::vector<float> magnitudes(bands.size(), 0.0f);
@@ -73,4 +73,3 @@ std::vector<float> Analyzer::getBandLevels()
     }
     return magnitudes;
 }
-

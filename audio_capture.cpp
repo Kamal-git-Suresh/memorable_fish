@@ -1,67 +1,41 @@
 #include "audio_capture.h"
 #include <iostream>
 
-AudioCapture::AudioCapture(int deviceIndex, int sampleRate, int framesPerBuffer) 
-    : sampleRate(sampleRate), framesPerBuffer(framesPerBuffer)
+AudioCapture::AudioCapture(const char* device, int sampleRate, int channels, size_t buffer_samples) 
+    : device(device), BUF_SAMPLES(buffer_samples)
 {
-        Pa_Initialize();
+    ss.format = PA_SAMPLE_S16LE;
+    ss.rate = sampleRate;
+    ss.channels = channels;
+    stream = pa_simple_new(nullptr,               
+                           "AudioVisualizer",     
+                           PA_STREAM_RECORD,
+                           device,               
+                           "Record",             
+                           &ss,                  
+                           nullptr,              
+                           nullptr,              
+                           &error);     
 
-        PaStreamParameters inputParams;
-        inputParams.device = deviceIndex;
-        inputParams.channelCount = 1;
-        inputParams.sampleFormat = paFloat32;
-        inputParams.suggestedLatency = 
-            Pa_GetDeviceInfo(deviceIndex)->defaultLowInputLatency;
-        inputParams.hostApiSpecificStreamInfo = nullptr;
-
-        PaError err = Pa_OpenStream(&stream, &inputParams, nullptr, sampleRate, 
-                        framesPerBuffer, paClipOff, 
-                        &AudioCapture::paCallback, this);
-        if (err != paNoError)
-        {
-            std::cerr << "Failed to open audio stream: " << Pa_GetErrorText(err) << "\n";
-            stream = nullptr;
-        }
-        
-
-}
+    if (!stream) {
+        std::cerr << "Failed to open audio device: " << pa_strerror(error) << std::endl;
+    }
+} 
 
 AudioCapture::~AudioCapture() 
 {
-    stop();
-    Pa_Terminate();
+    if (stream)
+        pa_simple_free(stream);
 }
 
-bool AudioCapture::start(Callback callback) 
+bool AudioCapture::getAudioBuffer(std::vector<int16_t>& outBuffer)
 {
-    if (stream && Pa_IsStreamStopped(stream) == 1) 
-    {
-        userCallback = callback;
-        Pa_StartStream(stream);
-        return true;
+    if (!stream) return false;
+    outBuffer.resize(BUF_SAMPLES * 2);
+    if(pa_simple_read(stream, outBuffer.data(), outBuffer.size() * sizeof(int16_t), &error) < 0){
+        std::cerr << "read failed" << pa_strerror(error) << std::endl;
+        return false;
     }
-    return false;
-}
-
-void AudioCapture::stop() 
-{
-    if (stream && Pa_IsStreamActive(stream) == 1) 
-    {
-        Pa_StopStream(stream);
-        Pa_CloseStream(stream);
-        userCallback = nullptr;
-        stream = nullptr;
-    }
-}
-
-int AudioCapture::paCallback(const void* input, void*,
-                             unsigned long frameCount,
-                             const PaStreamCallbackTimeInfo*,
-                             PaStreamCallbackFlags,
-                             void* userData) {
-    auto* self = static_cast<AudioCapture*>(userData);
-    if (self->userCallback && input) {
-        self->userCallback(static_cast<const float*>(input), frameCount * 2);
-    }
-    return paContinue;
+    
+    return true;
 }
