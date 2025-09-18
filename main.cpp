@@ -1,10 +1,13 @@
 #include "analyzer.h"
 #include "audio_capture.h"
+#include "uart.h"
 #include <csignal>
 #include <iostream>
 #include <vector>
 #include <atomic>
 #include <algorithm>
+#include <termios.h>
+#include <unistd.h>
 
 std::atomic keepRunning(true);
 
@@ -25,6 +28,7 @@ int main()
 
     AudioCapture audioCapture(device, sampleRate, channels, buffer_samples);
     Analyzer analyzer(sampleRate, fftSize);
+    UART uart("/dev/ttyACM0", B115200);
 
     std::cout << "Capturing system audio... press ctrl+C to quit.\n";
     while (keepRunning)
@@ -43,19 +47,19 @@ int main()
             int range = maxLevel - minLevel;
             //std::cout << "Levels: " << minLevel << " to " << maxLevel << " | ";
             if (range == 0)  range = 1; 
+
             for (size_t i = 0; i < levels.size(); i++)
             {
                 bandMax[i] = std::max(bandMax[i], static_cast<int>(levels[i]));
                 float norm = (float)(levels[i] / (bandMax[i] +5));
                 int eqLevel = static_cast<int>( norm * 100 );
                 std::cout << eqLevel << " ";
+                levels[i] = eqLevel;
             }
             std::cout << std::endl;
+            uart.sendData(std::vector<uint8_t>(levels.begin(), levels.end()));
         }
-        else
-        {
-            std::cerr << "Failed to get audio buffer" << std::endl;
-        }
+        else std::cerr << "Failed to get audio buffer" << std::endl;
     }
     return 0;
 }
