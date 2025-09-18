@@ -49,7 +49,8 @@ void Analyzer::computeFFT()
     {
         //std::cout <<"out: "<< out[k][0]<<std::endl;
         //std::cout <<"out: "<< out[k][0] <<" " <<out[k][1] << std::endl;
-        float mag = sqrt(out[k][0]*out[k][0] + out[k][1]*out[k][1]);    
+        float mag = sqrt(out[k][0]*out[k][0] + out[k][1]*out[k][1]); 
+        mag = 10 * log10(mag + 1e-6);    
         spectrum[k] = mag;
     }
 }
@@ -60,7 +61,7 @@ std::vector<float> Analyzer::getBandLevels()
     magnitudes.reserve(bands.size());
 
     float freqPerBin = static_cast<float>(sampleRate) / static_cast<float>(N);
-    
+
     for (auto& band: bands)
     {
         band.level = 0; 
