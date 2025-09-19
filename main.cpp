@@ -18,11 +18,13 @@ void signalHandler(int)
 
 int main()
 {
+    bool init = true;
     const int sampleRate = 48000;
-    const int fftSize = 1024;
+    const int fftSize = 2048;
     const int channels = 2;
     const size_t buffer_samples = 128;
-    const char *device = "alsa_output.usb-Apple__Inc._USB-C_to_3.5mm_Headphone_Jack_Adapter_DWH3143075FL1MQAE-00.analog-stereo.monitor";
+    const char *device = "alsa_output.usb-Apple__Inc._USB-C_to_3.5mm_Headphone_Jack_Adapter_DWH3143075FL1MQAE-00.analog-stereo.monitor";//"alsa_output.pci-0000_04_00.6.analog-stereo.monitor";//
+    // or alsa_output.pci-0000_04_00.6.analog-stereo.monitor
     std::vector<int16_t> audioBuffer;
     std::signal(SIGINT, signalHandler);
 
@@ -35,31 +37,35 @@ int main()
     {
         if (audioCapture.getAudioBuffer(audioBuffer))
         {
-            std::vector<float> floatBuffer(audioBuffer.begin(), audioBuffer.end());
-
+            std::vector<float> floatBuffer(audioBuffer.size() / channels);
+            for (size_t i = 0; i < floatBuffer.size(); i++)
+            {
+                int16_t left = audioBuffer[i * 2];
+                int16_t right = audioBuffer[i * 2 + 1];
+                floatBuffer[i] = ((left + right) / 2.0f) / 32768.0f;
+            }
             analyzer.process(floatBuffer.data(), floatBuffer.size());
 
             auto levels = analyzer.getBandLevels();
             std::vector<int> bandMax(levels.size(), 0);
-
-            int minLevel = *std::min_element(levels.begin(), levels.end());
-            int maxLevel = *std::max_element(levels.begin(), levels.end());
-            int range = maxLevel - minLevel;
-            //std::cout << "Levels: " << minLevel << " to " << maxLevel << " | ";
-            if (range == 0)  range = 1; 
-
             for (size_t i = 0; i < levels.size(); i++)
             {
-                bandMax[i] = std::max(bandMax[i], static_cast<int>(levels[i]));
-                float norm = (float)(levels[i] / (bandMax[i] +5));
-                int eqLevel = static_cast<int>( norm * 100 );
-                std::cout << eqLevel << " ";
-                levels[i] = eqLevel;
+                levels[i] = (levels[i]<10)? 0 :(levels[i] - 10);
+            
+                std::cout << static_cast<int>(levels[i]) << " ";
             }
             std::cout << std::endl;
+
+            if (init)
+            {
+                std::cout << "Initialized UART connection on /dev/ttyACM0 at 115200 baud." << std::endl;
+                init = false;
+                sleep(2);
+            }
             uart.sendData(std::vector<uint8_t>(levels.begin(), levels.end()));
         }
-        else std::cerr << "Failed to get audio buffer" << std::endl;
+        else
+            std::cerr << "Failed to get audio buffer" << std::endl;
     }
     return 0;
 }
